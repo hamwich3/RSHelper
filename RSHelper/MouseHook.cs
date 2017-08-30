@@ -2,9 +2,9 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace MouseSampler
+namespace MouseControl
 {
-    public static class MouseHook
+    static class MouseHook
 
     {
         public static event EventHandler RMouseAction = delegate { };

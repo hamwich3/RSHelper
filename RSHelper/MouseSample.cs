@@ -8,7 +8,7 @@ using System.Threading;
 using System.Windows.Forms;
 
 
-namespace MouseSampler
+namespace MouseSampling
 {
 
     /*TODO:
@@ -92,7 +92,7 @@ namespace MouseSampler
                     millis = 0;
                     lastMillis = -1;
                     MouseFrames.Clear();
-                    while (millis <= 10000 && !nextSample && recording)
+                    while (millis <= 30000 && !nextSample && recording)
                     {
                         millis = sw.ElapsedMilliseconds;
                         if (millis != lastMillis)
@@ -102,11 +102,11 @@ namespace MouseSampler
                         }
                         Thread.Sleep(0);
                     }
-                    if (millis < 10000 && MouseFrames.Count > 0 && recording)
+                    if (millis < 30000 && MouseFrames.Count > 0 && recording)
                     {
-                        Save(Normalize(MouseFrames));
+                        Save(TrimStart(Normalize(MouseFrames)));
                     }
-                    if (millis > 10000)
+                    if (millis > 30000)
                     {
                         startSampling = false;
                     }

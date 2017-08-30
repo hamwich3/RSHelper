@@ -7,7 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using MouseSampler;
+using MouseSampling;
+using MouseControl;
 
 namespace RSHelper
 {
@@ -16,12 +17,24 @@ namespace RSHelper
         public Form1()
         {
             InitializeComponent();
-            MouseSample.LoadSamples();
+            MouseHook.Start();
+            
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            MouseSample.MoveTo(new Point(800, 800));
+            if (!MouseSample.Recording)
+            {
+                MouseSample.StartRecord();
+                MouseHook.RMouseAction += MouseSample.StartNewSample;
+                MouseHook.LMouseAction += MouseSample.StartNewSample;
+            }
+            else
+            {
+                MouseSample.StopRecord();
+                MouseHook.RMouseAction -= MouseSample.StartNewSample;
+                MouseHook.LMouseAction -= MouseSample.StartNewSample;
+            }
         }
     }
 }

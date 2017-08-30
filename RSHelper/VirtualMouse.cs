@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace MouseHook
+namespace VirtualMouseControl
 {
     public static class VirtualMouse
     {
