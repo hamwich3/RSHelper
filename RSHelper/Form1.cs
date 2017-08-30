@@ -18,10 +18,16 @@ namespace RSHelper
         {
             InitializeComponent();
             MouseHook.Start();
-            
+            MouseSample.LoadSamples();
         }
 
         private void button1_Click(object sender, EventArgs e)
+        {
+            if (!MouseSample.FilesLoaded) return;
+            MouseSample.MoveTo(new Point(800, 800));
+        }
+
+        private void ToggleRecordSamples()
         {
             if (!MouseSample.Recording)
             {

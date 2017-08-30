@@ -18,7 +18,7 @@ namespace MouseSampling
      * 
      * name format: [DIST]_[LENGTH]_[DIRECTION]
      * where DIST is the distance from start to finish,
-     * LENGTH is total length of movement in frames (each frame is ~1ms)
+     * LENGTH is total length of movement in points (each point is ~1ms)
      * DIRECTION is left/right (x) then up/down (y): RD, RU, LD, LU
      * eg:
      * "123_456_UL"
@@ -29,7 +29,8 @@ namespace MouseSampling
     static class MouseSample
     {
         public static bool Recording { get { return recording; } }
-        public static int FilesLoaded { get { return filesLoaded; } }
+        public static bool FilesLoaded { get { return filesLoaded; } }
+        public static int TotalFilesLoaded { get { return totalFilesLoaded; } }
         public static int FileCount { get { return fileCount; } }
         public static event EventHandler LoadFinished = delegate { };
         public static event EventHandler MoveFinished = delegate { };
@@ -39,7 +40,8 @@ namespace MouseSampling
         static bool nextSample = false;
         static bool recording = false;
         static bool startSampling = false;
-        static int filesLoaded = 0;
+        static bool filesLoaded = false;
+        static int totalFilesLoaded = 0;
         static int fileCount = 0;
 
         /// <summary>
@@ -80,7 +82,7 @@ namespace MouseSampling
         static void RecordSamples()
         {
             Stopwatch sw = new Stopwatch();
-            List<Point> MouseFrames = new List<Point>();
+            List<Point> samplePoints = new List<Point>();
             long millis = 0;
             long lastMillis = -1;
             Thread recordThread = new Thread(() =>
@@ -91,20 +93,20 @@ namespace MouseSampling
                     sw.Restart();
                     millis = 0;
                     lastMillis = -1;
-                    MouseFrames.Clear();
+                    samplePoints.Clear();
                     while (millis <= 30000 && !nextSample && recording)
                     {
                         millis = sw.ElapsedMilliseconds;
                         if (millis != lastMillis)
                         {
                             lastMillis = millis;
-                            MouseFrames.Add(Cursor.Position);
+                            samplePoints.Add(Cursor.Position);
                         }
                         Thread.Sleep(0);
                     }
-                    if (millis < 30000 && MouseFrames.Count > 0 && recording)
+                    if (millis < 30000 && samplePoints.Count > 0 && recording)
                     {
-                        Save(TrimStart(Normalize(MouseFrames)));
+                        Save(TrimStart(Normalize(samplePoints)));
                     }
                     if (millis > 30000)
                     {
@@ -117,18 +119,18 @@ namespace MouseSampling
         }
 
         /// <summary>
-        /// Moves sample starting point to {0,0}
+        /// Moves sample's points starting point to {0,0}
         /// </summary>
-        /// <param name="sample"></param>
+        /// <param name="samplePoints"></param>
         /// <returns></returns>
-        public static List<Point> Normalize(List<Point> sample)
+        public static List<Point> Normalize(List<Point> samplePoints)
         {
             List<Point> normalizedSample = new List<Point>();
-            int xAdjust = sample[0].X;
-            int yAdjust = sample[0].Y;
-            for (int i = 0; i < sample.Count; i++)
+            int xAdjust = samplePoints[0].X;
+            int yAdjust = samplePoints[0].Y;
+            for (int i = 0; i < samplePoints.Count; i++)
             {
-                normalizedSample.Add(new Point(sample[i].X - xAdjust, sample[i].Y - yAdjust));
+                normalizedSample.Add(new Point(samplePoints[i].X - xAdjust, samplePoints[i].Y - yAdjust));
             }
             return normalizedSample;
         }
@@ -136,52 +138,52 @@ namespace MouseSampling
         /// <summary>
         /// Trims all but one leading {0,0} points
         /// </summary>
-        /// <param name="sample"></param>
+        /// <param name="samplePoints"></param>
         /// <returns></returns>
-        public static List<Point> TrimStart(List<Point> sample)
+        public static List<Point> TrimStart(List<Point> samplePoints)
         {
             List<Point> trimmedSample = new List<Point>();
             int startIndex = 0;
-            for (int i = 0; i < sample.Count; i++)
+            for (int i = 0; i < samplePoints.Count; i++)
             {
-                if (!sample[0].Equals(sample[i]))
+                if (!samplePoints[0].Equals(samplePoints[i]))
                 {
                     startIndex = i - 1;
                     break;
                 }
             }
-            for (int i = startIndex; i < sample.Count; i++)
+            for (int i = startIndex; i < samplePoints.Count; i++)
             {
-                trimmedSample.Add(sample[i]);
+                trimmedSample.Add(samplePoints[i]);
             }
             return trimmedSample;
         }
 
         /// <summary>
-        /// Shifts sample to end at desired location
+        /// Shifts sample's points to end at desired location
         /// </summary>
-        /// <param name="sample"></param>
+        /// <param name="samplePoints"></param>
         /// <param name="startX"></param>
         /// <param name="startY"></param>
         /// <param name="endX"></param>
         /// <param name="endY"></param>
         /// <returns></returns>
-        public static List<Point> Transform(List<Point> sample, Point start, Point end)
+        public static List<Point> Transform(List<Point> samplePoints, Point start, Point end)
         {
             List<Point> tSample = new List<Point>();
             //Normalize(sample);
             //Normalize x and y endpoint
             double normX = end.X - start.X;
             double normY = end.Y - start.Y;
-            double xFactor = normX / sample.Last().X; // lol X Factor
-            double yFactor = normY / sample.Last().Y;
+            double xFactor = normX / samplePoints.Last().X; // lol X Factor
+            double yFactor = normY / samplePoints.Last().Y;
             //Scales x,y factors from 0-1 over movement
-            double tFactor = 1.0000 / sample.Count;
+            double tFactor = 1.0000 / samplePoints.Count;
 
-            for (int i = 0; i < sample.Count; i++)
+            for (int i = 0; i < samplePoints.Count; i++)
             {
-                double x = Math.Round(sample[i].X * (xFactor * (tFactor * i)));
-                double y = Math.Round(sample[i].Y * (yFactor * (tFactor * i)));
+                double x = Math.Round(samplePoints[i].X * (xFactor * (tFactor * i)));
+                double y = Math.Round(samplePoints[i].Y * (yFactor * (tFactor * i)));
                 tSample.Add(new Point((int)x, (int)y));
             }
             tSample = Transpose(tSample, start);
@@ -190,19 +192,19 @@ namespace MouseSampling
         }
 
         /// <summary>
-        /// Moves sample to start at desired location
+        /// Moves sample's points to start at desired location
         /// </summary>
-        /// <param name="sample"></param>
+        /// <param name="samplePoints"></param>
         /// <param name="startX"></param>
         /// <param name="startY"></param>
         /// <returns></returns>
-        public static List<Point> Transpose(List<Point> sample, Point start)
+        public static List<Point> Transpose(List<Point> samplePoints, Point start)
         {
             List<Point> tSample = new List<Point>();
 
-            for (int i = 0; i < sample.Count; i++)
+            for (int i = 0; i < samplePoints.Count; i++)
             {
-                tSample.Add(new Point(sample[i].X + start.X, sample[i].Y + start.Y));
+                tSample.Add(new Point(samplePoints[i].X + start.X, samplePoints[i].Y + start.Y));
             }
             return tSample;
         }
@@ -212,27 +214,75 @@ namespace MouseSampling
         /// </summary>
         public static void MoveTo(Point endP)
         {
+            if (!filesLoaded)
+            {
+                throw new Exception("Mouse sample files not done loading");
+            }
             Point startP = Cursor.Position;
+
             Sample.SampleInfo.Directions dir;
             if (endP.X >= startP.X && endP.Y >= startP.Y) dir = Sample.SampleInfo.Directions.RightDown;
             else if (endP.X < startP.X && endP.Y >= startP.Y) dir = Sample.SampleInfo.Directions.LeftDown;
             else if (endP.X >= startP.X && endP.Y < startP.Y) dir = Sample.SampleInfo.Directions.RightUp;
             else dir = Sample.SampleInfo.Directions.LeftUp;
+
             float dist = ((int)Math.Sqrt(Math.Pow(endP.X - startP.X, 2) + Math.Pow(endP.Y - startP.Y, 2)));
 
             //Same sample direction, same or greater distance
-            var samples = from sample in Samples
-                          where (sample.Info.Direction == dir && sample.Info.Distance > dist && sample.Info.Distance < dist*1.3)
-                          select sample;
+            var samples = from s in Samples
+                          where (s.Info.Direction == dir && s.Info.Distance > dist * 1.1 && s.Info.Distance < dist*1.3 && s.Info.Length < dist*3.5)
+                          select s;
+            //Get any direction if no match found
+            if (samples.Count() == 0)
+            {
+                samples = from s in Samples
+                          where (s.Info.Distance > dist * 1.1 && s.Info.Distance < dist * 1.3 && s.Info.Length < dist * 3.5) select s;
+            }
+            if (samples.Count() == 0) throw new Exception("Not enough samples! couldn't find anything for length: " + dist);
+
+            // shortest length first
             samples = samples.OrderBy((s) => { return s.Info.Length; });
             Random r = new Random();
-            int n = r.Next(0, Math.Max((int)(samples.Count()*.3), 1));
-            var movement = Transform(samples.ElementAt(n).Frames, startP, endP);
+            int n = r.Next(0, Math.Max((int)(samples.Count()*.7), 1));
+            Sample sample = samples.ElementAt(n);
+            var movement = Transform(sample.Points, startP, endP);
+            //Remove sample if it "jumps" too much and try again
+            if (!SampleOK(movement))
+            {
+                Samples.Remove(sample);
+                Console.WriteLine("Removed sample from list: " + sample.Info.Distance + "_" + sample.Info.Length + "_" + sample.Info.Direction);
+                MoveTo(endP);
+                return;
+            }
             Move(movement);
         }
 
-        // TDOD: make into thread or async with callback
-        public static void Move(List<Point> sample)
+        /// <summary>
+        /// Returns false if sample "jumps" too much
+        /// </summary>
+        /// <param name="samplePoints"></param>
+        /// <returns></returns>
+        static bool SampleOK(List<Point> samplePoints)
+        {
+            for (int i = 1; i < samplePoints.Count; i++)
+            {
+                int deltaX = Math.Abs(samplePoints[i].X - samplePoints[i - 1].X);
+                int deltaY = Math.Abs(samplePoints[i].Y - samplePoints[i - 1].Y);
+                int dist = (int)Math.Sqrt(Math.Pow(deltaX, 2) + Math.Pow(deltaY, 2));
+                if (dist > 50)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Starts movement thread; fires MoveFinished event when finished.
+        /// Checks for and prints to console length of movements that skip too many pixels
+        /// </summary>
+        /// <param name="samplePoints"></param>
+        public static void Move(List<Point> samplePoints)
         {
             Thread moveThread = new Thread(() =>
             {
@@ -240,12 +290,12 @@ namespace MouseSampling
                 sw.Start();
                 long millis = 0;
                 long lastMillis = -1;
-                while (millis < sample.Count)
+                while (millis < samplePoints.Count)
                 {
                     if (millis != lastMillis)
                     {
                         lastMillis = millis;
-                        Cursor.Position = sample[(int)millis];
+                        Cursor.Position = samplePoints[(int)millis];
                     }
                     millis = sw.ElapsedMilliseconds;
                 }
@@ -255,7 +305,7 @@ namespace MouseSampling
         }
 
 
-        static void Save(List<Point> list)
+        static void Save(List<Point> samplePoints)
         {
             string filename = "";
             string filepath = "";
@@ -266,10 +316,10 @@ namespace MouseSampling
                 Directory.CreateDirectory(initialDirectory);
             }
 
-            int xDist = list.Last().X - list[0].X;
-            int yDist = list.Last().Y - list[0].Y;
+            int xDist = samplePoints.Last().X - samplePoints[0].X;
+            int yDist = samplePoints.Last().Y - samplePoints[0].Y;
             string DIST = ((int)Math.Sqrt(Math.Pow(xDist, 2) + Math.Pow(yDist, 2))).ToString();
-            string LENGTH = list.Count.ToString();
+            string LENGTH = samplePoints.Count.ToString();
             string DIRECTION = "";
 
             if (xDist >= 0) DIRECTION += "R";
@@ -294,7 +344,7 @@ namespace MouseSampling
             {
                 using (Stream stream = File.Open(filepath, FileMode.OpenOrCreate))
                 {
-                    foreach (var p in list)
+                    foreach (var p in samplePoints)
                     {
                         byte[] xbytes = BitConverter.GetBytes(p.X);
                         byte[] ybytes = BitConverter.GetBytes(p.Y);
@@ -314,6 +364,7 @@ namespace MouseSampling
 
         public static void LoadSamples()
         {
+            filesLoaded = false;
             Thread loadThread = new Thread(() =>
             {
                 Stopwatch sw = new Stopwatch();
@@ -329,15 +380,16 @@ namespace MouseSampling
                     if (success)
                     {
                         Samples.Add(new Sample(data));
-                        filesLoaded++;
-                        Console.WriteLine(FilesLoaded);
+                        totalFilesLoaded++;
+                        Console.WriteLine(totalFilesLoaded);
                     }
                     else faillist.Add(Path.GetFileName(file));
                 }
                 Console.WriteLine(fileCount);
-                if (FilesLoaded == fileCount)
+                if (totalFilesLoaded == fileCount)
                 {
                     //MessageBox.Show("Mouse movement samples loaded.");
+                    filesLoaded = true;
                 }
                 else
                 {
@@ -348,11 +400,11 @@ namespace MouseSampling
             loadThread.Start();
         }
 
-        static bool TryOpen(string filename, out List<Point> list)
+        static bool TryOpen(string filename, out List<Point> samplePoints)
         {
             try
             {
-                list = new List<Point>();
+                samplePoints = new List<Point>();
                 using (Stream stream = File.Open(filename, FileMode.Open))
                 {
                     while (stream.Position < stream.Length)
@@ -363,7 +415,7 @@ namespace MouseSampling
                         stream.Read(ybytes, 0, sizeof(int));
                         int x = BitConverter.ToInt32(xbytes, 0);
                         int y = BitConverter.ToInt32(ybytes, 0);
-                        list.Add(new Point(x, y));
+                        samplePoints.Add(new Point(x, y));
                     }
                     return true;
                 }
@@ -372,19 +424,19 @@ namespace MouseSampling
             {
                 MessageBox.Show(e.ToString());
             }
-            list = null;
+            samplePoints = null;
             return false;
         }
     }
 
     class Sample
     {
-        public List<Point> Frames;
+        public List<Point> Points;
         public SampleInfo Info;
 
         public Sample(List<Point> data)
         {
-            Frames = data;
+            Points = data;
             Info = new SampleInfo(data);
         }
 
