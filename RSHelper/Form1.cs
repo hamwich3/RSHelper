@@ -17,8 +17,10 @@ namespace RSHelper
         public Form1()
         {
             InitializeComponent();
-            MouseHook.Start();
-            MouseSample.LoadSamples();
+            //MouseHook.Start();
+            //MouseSample.LoadSamples();
+            ObtainImageResources resourcescreen = new ObtainImageResources();
+            resourcescreen.Show();
         }
 
         private void button1_Click(object sender, EventArgs e)
